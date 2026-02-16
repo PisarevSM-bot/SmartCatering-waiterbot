@@ -398,8 +398,8 @@ async def send_medbook_reminders():
         expiring = get_expiring_medbooks(days)
         for tg_id, name, expiry in expiring:            
             days_left = (datetime.strptime(expiry, '%Y-%m-%d').date() - datetime.now().date()).days
-                try:
-                    await bot.send_message(tg_id, f"⚠️ Напоминание!\n{name}, срок действия медкнижки истекает {format_date_for_user(expiry)} (осталось {days_left} дн.). Оформите продление!")
+            try:
+                await bot.send_message(tg_id, f"⚠️ Напоминание!\n{name}, срок действия медкнижки истекает {format_date_for_user(expiry)} (осталось {days_left} дн.). Оформите продление!")
                 logger.info(f"Напоминание отправлено {name} (ID: {tg_id}), дней до окончания: {days_left}")
             except Exception as e:
                 logger.warning(f"Не удалось отправить напоминание {tg_id}: {e}")
