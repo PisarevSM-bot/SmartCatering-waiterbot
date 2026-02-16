@@ -96,7 +96,8 @@ def create_admin_kb():
         [KeyboardButton(text="📤 Выгрузить всех")],
         [KeyboardButton(text="🚫 Чёрный список")],
         [KeyboardButton(text="⬅️ Назад")]
-    ]    return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+    ]    
+    return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
 @router.message(Command("start"))
 async def cmd_start(message: Message, state: FSMContext):
