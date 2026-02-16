@@ -146,7 +146,8 @@ async def process_birth_date(message: Message, state: FSMContext):
     birth_date = datetime.strptime(message.text.strip(), '%d.%m.%Y')
     age = (datetime.now() - birth_date).days / 365.25
     if age < 16:
-        await message.answer("Возраст должен быть не менее 16 лет:")        return
+        await message.answer("Возраст должен быть не менее 16 лет:")        
+        return
     await state.update_data(birth_date=message.text.strip())
     await state.set_state(Registration.phone)
     await message.answer("📱 Телефон +79991234567:")
@@ -244,7 +245,8 @@ async def admin_panel(message: Message):
 
 @router.message(F.text == "🔍 Поиск по фамилии")
 async def search_start(message: Message):
-    if not is_admin(message.from_user.id):        return
+    if not is_admin(message.from_user.id):        
+        return
     await message.answer("🔍 Введите фамилию:")
 
 @router.message(F.text.regexp(r'^[А-Яа-яЁё\s\-]+$'))
@@ -293,7 +295,8 @@ async def blacklist_menu(message: Message):
         return
     blacklist = get_blacklist()
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="➕ Добавить", callback_data="blacklist_add")],        [InlineKeyboardButton(text="🗑 Удалить запись", callback_data="blacklist_remove")]
+        [InlineKeyboardButton(text="➕ Добавить", callback_data="blacklist_add")],        
+        [InlineKeyboardButton(text="🗑 Удалить запись", callback_data="blacklist_remove")]
     ])
     if blacklist:
         text = f"🚫 В чёрном списке ({len(blacklist)} чел.):\n\n"
@@ -342,7 +345,8 @@ async def blacklist_add_birth(message: Message, state: FSMContext):
         await state.clear()
         await message.answer("Действие отменено", reply_markup=create_admin_kb())
         return
-    birth_date = None if text == '-' else text    await state.update_data(birth_date=birth_date)
+    birth_date = None if text == '-' else text    
+    await state.update_data(birth_date=birth_date)
     await state.set_state(BlacklistAdd.reason)
     await message.answer("Причина добавления в ЧС:")
 
