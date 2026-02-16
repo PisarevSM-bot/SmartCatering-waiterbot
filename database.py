@@ -145,7 +145,8 @@ def get_blacklist():
         FROM blacklist 
         ORDER BY blacklisted_at DESC
     ''')
-    results = cursor.fetchall()    conn.close()
+    results = cursor.fetchall()    
+    conn.close()
     return results
 
 def staff_exists(telegram_id):
