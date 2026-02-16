@@ -196,7 +196,8 @@ async def process_medbook(message: Message, state: FSMContext):
     await state.clear()
 
 @router.message(F.text == "👤 Мои данные")
-async def my_data(message: Message):    if not staff_exists(message.from_user.id):
+async def my_data(message: Message):    
+    if not staff_exists(message.from_user.id):
         await message.answer("❌ Вы не зарегистрированы. Нажмите /start")
         return
     conn = sqlite3.connect('waiters.db')
