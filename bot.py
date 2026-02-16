@@ -205,7 +205,7 @@ async def my_data(message: Message):
     cursor.execute('SELECT full_name, birth_date, phone, medbook_status, medbook_expiry FROM staff WHERE telegram_id = ?', (message.from_user.id,))
     data = cursor.fetchone()
     conn.close()
-    if not 
+    if not data:
         await message.answer("❌ Ваши данные не найдены.")
         return
     name, birth, phone, status, expiry = data
