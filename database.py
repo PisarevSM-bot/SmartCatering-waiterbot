@@ -47,7 +47,8 @@ def add_staff(telegram_id, full_name, birth_date, phone, medbook_expiry):
         VALUES (?, ?, ?, ?, 'действует', ?, 1, CURRENT_TIMESTAMP)
     ''', (telegram_id, full_name, birth_date, phone, medbook_expiry))
     conn.commit()
-    conn.close()    return True
+    conn.close()    
+    return True
 
 def update_medbook(telegram_id, medbook_expiry):
     conn = sqlite3.connect(DB_PATH)
@@ -96,7 +97,8 @@ def add_to_blacklist(full_name, phone, birth_date, reason, admin_id):
 def remove_from_blacklist(full_name):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM blacklist WHERE full_name LIKE ?', (f'%{full_name}%',))    count = cursor.rowcount
+    cursor.execute('DELETE FROM blacklist WHERE full_name LIKE ?', (f'%{full_name}%',))    
+    count = cursor.rowcount
     conn.commit()
     conn.close()
     return count
