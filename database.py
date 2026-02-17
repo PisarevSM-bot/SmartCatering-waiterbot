@@ -2,7 +2,7 @@ import sqlite3
 import os
 
 # Используем /app/waiters.db — Railway гарантирует, что /app доступен при наличии volume
-DB_PATH = '/app/waiters.db'
+DB_PATH = os.path.join(tempfile.gettempdir(), 'waiters.db')
 
 def init_db():
     # Создаём директорию и файл ПЕРЕД подключением
