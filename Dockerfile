@@ -1,14 +1,15 @@
 FROM python:3.13-slim
 
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libsqlite3-dev \
-    && rm -rf /var/lib/apt/lists/*
+   RUN apt-get update && apt-get install -y \
+       build-essential \
+       libsqlite3-dev \
+       && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+   WORKDIR /app
+   COPY requirements.txt .
+   RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .  # ← КОПИРУЕМ ВСЁ ИЗ КОРНЯ РЕПОЗИТОРИЯ
+   COPY . .
+   RUN ls -la /app/  # ← проверка: увидим bot.py, database.py
 
-CMD ["python", "bot.py"]
+   CMD ["python", "bot.py"]
