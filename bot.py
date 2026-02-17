@@ -195,7 +195,8 @@ async def process_medbook(message: Message, state: FSMContext):
         await message.answer("❌ Ошибка сохранения данных.", reply_markup=create_main_kb())
     await state.clear()
 
-@router.message(F.text.contains("Мои данные"))async def my_data(message: Message):    
+@router.message(F.text.contains("Мои данные"))
+async def my_data(message: Message):    
     if not staff_exists(message.from_user.id):
         await message.answer("❌ Вы не зарегистрированы. Нажмите /start")
         return
