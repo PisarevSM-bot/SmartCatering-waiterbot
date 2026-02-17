@@ -47,7 +47,8 @@ def init_db():
     print("✅ База данных инициализирована")
 
 def add_staff(telegram_id, full_name, birth_date, phone, medbook_expiry):
-    conn = sqlite3.connect(DB_PATH)    cursor = conn.cursor()
+    conn = sqlite3.connect(DB_PATH)    
+    cursor = conn.cursor()
     try:
         cursor.execute('''
             INSERT OR REPLACE INTO staff 
