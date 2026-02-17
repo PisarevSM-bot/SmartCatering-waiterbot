@@ -47,7 +47,8 @@ def add_staff(telegram_id, full_name, birth_date, phone, medbook_expiry):
         INSERT OR REPLACE INTO staff 
         (telegram_id, full_name, birth_date, phone, medbook_status, medbook_expiry, consent_given, updated_at)
         VALUES (?, ?, ?, ?, 'действует', ?, 1, CURRENT_TIMESTAMP)
-    ''', (telegram_id, full_name, birth_date, phone, medbook_expiry))    conn.commit()
+    ''', (telegram_id, full_name, birth_date, phone, medbook_expiry))    
+    conn.commit()
     conn.close()
     return True
 
