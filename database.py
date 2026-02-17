@@ -1,6 +1,5 @@
 import os
 import psycopg2
-from psycopg2 import sql
 from datetime import datetime
 
 DB_URL = os.getenv("DATABASE_URL")
@@ -47,8 +46,8 @@ def add_staff(telegram_id, full_name, birth_date, phone, medbook_expiry):
     try:
         with conn.cursor() as cur:
             cur.execute('''
-                INSERT INTO staff                 (telegram_id, full_name, birth_date, phone, medbook_status, medbook_expiry, consent_given, updated_at)
-                VALUES (%s, %s, %s, %s, 'действует', %s, TRUE, NOW())
+                INSERT INTO staff 
+                (telegram_id, full_name, birth_date, phone, medbook_status, medbook_expiry, consent_given, updated_at)                VALUES (%s, %s, %s, %s, 'действует', %s, TRUE, NOW())
                 ON CONFLICT (telegram_id) DO UPDATE SET
                     full_name = %s,
                     birth_date = %s,
@@ -96,8 +95,8 @@ def get_all_staff():
     conn = psycopg2.connect(DB_URL)
     try:
         with conn.cursor() as cur:
-            cur.execute('''                SELECT full_name, birth_date, phone, medbook_status, medbook_expiry 
-                FROM staff 
+            cur.execute('''
+                SELECT full_name, birth_date, phone, medbook_status, medbook_expiry                 FROM staff 
                 ORDER BY full_name
             ''')
             return cur.fetchall()
@@ -124,7 +123,6 @@ def add_to_blacklist(full_name, phone, birth_date, reason, admin_id):
     conn = psycopg2.connect(DB_URL)
     try:
         with conn.cursor() as cur:
-            # Получаем данные из активных (если есть)
             cur.execute('SELECT phone, birth_date FROM staff WHERE full_name = %s', (full_name,))
             existing = cur.fetchone()
             if existing:
@@ -145,8 +143,9 @@ def add_to_blacklist(full_name, phone, birth_date, reason, admin_id):
     finally:
         conn.close()
 
-def remove_from_blacklist(full_name):    conn = psycopg2.connect(DB_URL)
-    try:
+def remove_from_blacklist(full_name):
+    conn = psycopg2.connect(DB_URL)
+    try:        
         with conn.cursor() as cur:
             cur.execute('DELETE FROM blacklist WHERE full_name ILIKE %s', (f'%{full_name}%',))
             conn.commit()
