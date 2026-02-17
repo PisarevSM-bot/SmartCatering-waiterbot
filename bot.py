@@ -128,7 +128,7 @@ async def process_consent(message: Message, state: FSMContext):
         return
     await state.set_state(Registration.full_name)
     await message.answer("👤 Введите ФИО:")
-    buttons = [,
+    buttons = [
         [KeyboardButton(text="⬅️ Назад")]    ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
