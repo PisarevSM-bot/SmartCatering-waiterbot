@@ -1,6 +1,6 @@
 import sqlite3
 import os
-
+import tempfile
 # Используем /app/waiters.db — Railway гарантирует, что /app доступен при наличии volume
 DB_PATH = os.path.join(tempfile.gettempdir(), 'waiters.db')
 
