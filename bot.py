@@ -145,7 +145,8 @@ async def process_birth_date(message: Message, state: FSMContext):
         return
     birth_date = datetime.strptime(message.text.strip(), '%d.%m.%Y')
     age = (datetime.now() - birth_date).days / 365.25
-    if age < 16:        await message.answer("Возраст должен быть не менее 16 лет:")        
+    if age < 18:        
+        await message.answer("Возраст должен быть не менее 18 лет:")        
         return
     await state.update_data(birth_date=message.text.strip())
     await state.set_state(Registration.phone)
