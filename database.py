@@ -96,7 +96,8 @@ def get_all_staff():
     return results
 
 def get_expiring_medbooks(days_ahead):
-    conn = sqlite3.connect(DB_PATH)    cursor = conn.cursor()
+    conn = sqlite3.connect(DB_PATH)    
+    cursor = conn.cursor()
     cursor.execute('''
         SELECT telegram_id, full_name, medbook_expiry 
         FROM staff 
