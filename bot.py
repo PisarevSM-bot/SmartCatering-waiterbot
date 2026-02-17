@@ -128,6 +128,10 @@ async def process_consent(message: Message, state: FSMContext):
         return
     await state.set_state(Registration.full_name)
     await message.answer("👤 Введите ФИО:")
+    buttons = [,
+        [KeyboardButton(text="⬅️ Назад")]    ]
+    return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+
 
 @router.message(Registration.full_name)
 async def process_name(message: Message, state: FSMContext):
