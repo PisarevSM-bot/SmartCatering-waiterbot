@@ -2,7 +2,8 @@ import sqlite3
 import os
 
 # Используем относительный путь — Railway сохраняет файлы в корне при наличии volume
-DB_PATH = 'waiters.db'
+import tempfile
+DB_PATH = os.path.join(tempfile.gettempdir(), 'waiters.db')
 
 # Создаём файл явно, если его нет (критично для Railway)
 if not os.path.exists(DB_PATH):
