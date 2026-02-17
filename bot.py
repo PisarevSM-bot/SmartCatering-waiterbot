@@ -392,6 +392,13 @@ async def help_cmd(message: Message):
     await message.answer(text)
 
 async def on_startup():
+    logger.info("⏳ Инициализация базы данных...")
+    try:
+        init_db()
+        logger.info("✅ База данных инициализирована")
+    except Exception as e:
+        logger.error(f"❌ Ошибка инициализации БД: {e}")
+        sys.exit(1) 
     init_db()
     logger.info("✅ Бот запущен. Напоминания временно отключены.")
 async def main():
