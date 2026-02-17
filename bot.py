@@ -245,7 +245,8 @@ async def admin_panel(message: Message):
     await message.answer("👑 Админ-панель", reply_markup=create_admin_kb())
 
 @router.message(F.text.contains("Поиск по фамилии"))
-async def search_start(message: Message):    if not is_admin(message.from_user.id):        
+async def search_start(message: Message):    
+    if not is_admin(message.from_user.id):        
         return
     await message.answer("🔍 Введите фамилию:")
 
