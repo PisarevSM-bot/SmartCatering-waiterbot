@@ -47,8 +47,8 @@ def add_staff(telegram_id, full_name, birth_date, phone, medbook_expiry):
         with conn.cursor() as cur:
             cur.execute('''
                 INSERT INTO staff 
-                (telegram_id, full_name, birth_date, phone, medbook_status, medbook_expiry, consent_given, updated_at)                VALUES (%s, %s, %s, %s, 'действует', %s, TRUE, NOW())
-                ON CONFLICT (telegram_id) DO UPDATE SET
+                (telegram_id, full_name, birth_date, phone, medbook_status, medbook_expiry, consent_given, updated_at)                
+                VALUES (%s, %s, %s, %s, 'действует', %s, TRUE, NOW()) ON CONFLICT (telegram_id) DO UPDATE SET
                     full_name = %s,
                     birth_date = %s,
                     phone = %s,
