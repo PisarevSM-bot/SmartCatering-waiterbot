@@ -1,23 +1,19 @@
 import sqlite3
 import os
 
-# Используем относительный путь — Railway сохраняет файлы в корне при наличии volume
-DB_PATH = 'waiters.db'
+# Критически важно: используем /app/waiters.db и создаём файл явно
+DB_PATH = '/app/waiters.db'
+os.makedirs('/app', exist_ok=True)
 
-# Создаём файл явно при импорте (критично для Railway)
+# Создаём файл при импорте
 if not os.path.exists(DB_PATH):
-    try:
-        with open(DB_PATH, 'w') as f:
-            f.write('')  # пустой файл
-        print(f"✅ Создан файл: {DB_PATH}")
-    except Exception as e:
-        print(f"⚠️ Не удалось создать файл: {e}")
+    with open(DB_PATH, 'w') as f:
+        f.write('')
+    print(f"✅ Создан файл: {DB_PATH}")
 
 def init_db():
-    """Инициализирует таблицы, если их нет"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS staff (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,7 +28,6 @@ def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS blacklist (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,16 +39,15 @@ def init_db():
             added_by INTEGER NOT NULL
         )
     ''')
-    
     conn.commit()
     conn.close()
     print("✅ База данных инициализирована")
+
 def add_staff(telegram_id, full_name, birth_date, phone, medbook_expiry):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT OR REPLACE INTO staff 
-        (telegram_id, full_name, birth_date, phone, medbook_status, medbook_expiry, consent_given, updated_at)
+        INSERT OR REPLACE INTO staff         (telegram_id, full_name, birth_date, phone, medbook_status, medbook_expiry, consent_given, updated_at)
         VALUES (?, ?, ?, ?, 'действует', ?, 1, CURRENT_TIMESTAMP)
     ''', (telegram_id, full_name, birth_date, phone, medbook_expiry))
     conn.commit()
@@ -96,14 +90,13 @@ def get_expiring_medbooks(days_ahead):
     return result
 
 def add_to_blacklist(full_name, phone, birth_date, reason, admin_id):
-    conn = sqlite3.connect(DB_PATH)    
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('INSERT INTO blacklist (full_name, phone, birth_date, reason, added_by) VALUES (?, ?, ?, ?, ?)', (full_name, phone, birth_date, reason, admin_id))
     cursor.execute('DELETE FROM staff WHERE full_name = ?', (full_name,))
     conn.commit()
     conn.close()
     return True
-
 def remove_from_blacklist(full_name):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
