@@ -1,17 +1,13 @@
 import sqlite3
 import os
 
-# Критически важно: используем /app/waiters.db и создаём файл явно
-DB_PATH = '/app/waiters.db'
-os.makedirs('/app', exist_ok=True)
-
-# Создаём файл при импорте
-if not os.path.exists(DB_PATH):
-    with open(DB_PATH, 'w') as f:
-        f.write('')
-    print(f"✅ Создан файл: {DB_PATH}")
+DB_PATH = 'waiters.db'
 
 def init_db():
+    if not os.path.exists(DB_PATH):
+        with open(DB_PATH, 'w') as f:
+            f.write('')
+    
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
@@ -41,18 +37,17 @@ def init_db():
     ''')
     conn.commit()
     conn.close()
-    print("✅ База данных инициализирована")
 
 def add_staff(telegram_id, full_name, birth_date, phone, medbook_expiry):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT OR REPLACE INTO staff         (telegram_id, full_name, birth_date, phone, medbook_status, medbook_expiry, consent_given, updated_at)
+        INSERT OR REPLACE INTO staff 
+        (telegram_id, full_name, birth_date, phone, medbook_status, medbook_expiry, consent_given, updated_at)
         VALUES (?, ?, ?, ?, 'действует', ?, 1, CURRENT_TIMESTAMP)
     ''', (telegram_id, full_name, birth_date, phone, medbook_expiry))
     conn.commit()
-    conn.close()
-    return True
+    conn.close()    return True
 
 def update_medbook(telegram_id, medbook_expiry):
     conn = sqlite3.connect(DB_PATH)
@@ -97,11 +92,11 @@ def add_to_blacklist(full_name, phone, birth_date, reason, admin_id):
     conn.commit()
     conn.close()
     return True
+
 def remove_from_blacklist(full_name):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM blacklist WHERE full_name LIKE ?', (f'%{full_name}%',))
-    count = cursor.rowcount
+    cursor.execute('DELETE FROM blacklist WHERE full_name LIKE ?', (f'%{full_name}%',))    count = cursor.rowcount
     conn.commit()
     conn.close()
     return count
