@@ -298,6 +298,7 @@ async def blacklist_menu(message: Message):
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="➕ Добавить", callback_data="blacklist_add")],        
         [InlineKeyboardButton(text="🗑 Удалить запись", callback_data="blacklist_remove")]
+        [InlineKeyboardButton(text="⬅️ Назад")]
     ])
     if blacklist:
         text = f"🚫 В чёрном списке ({len(blacklist)} чел.):\n\n"
