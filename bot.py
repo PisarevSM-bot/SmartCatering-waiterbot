@@ -344,7 +344,8 @@ async def blacklist_add_birth(message: Message, state: FSMContext):
     if text in ["Отмена", "отмена", "-"]:
         await state.clear()
         await message.answer("Действие отменено", reply_markup=create_admin_kb())
-        return    birth_date = None if text == '-' else text    
+        return    
+        birth_date = None if text == '-' else text    
     await state.update_data(birth_date=birth_date)
     await state.set_state(BlacklistAdd.reason)
     await message.answer("Причина добавления в ЧС:")
