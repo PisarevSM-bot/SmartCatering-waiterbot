@@ -200,8 +200,9 @@ async def my_data(message: Message):
     if not staff_exists(message.from_user.id):
         await message.answer("❌ Вы не зарегистрированы. Нажмите /start")
         return
-        from database import DB_PATH
-    conn = sqlite3.connect(DB_PATH)
+    
+    # Используем функцию из database.py вместо ручного запроса
+    conn = sqlite3.connect('/app/waiters.db')  # ← временно, но лучше создать get_staff_by_id в database.py
     cursor = conn.cursor()
     cursor.execute('SELECT full_name, birth_date, phone, medbook_status, medbook_expiry FROM staff WHERE telegram_id = ?', (message.from_user.id,))
     data = cursor.fetchone()
