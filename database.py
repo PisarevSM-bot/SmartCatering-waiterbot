@@ -96,7 +96,8 @@ def get_expiring_medbooks(days_ahead):
     return result
 
 def add_to_blacklist(full_name, phone, birth_date, reason, admin_id):
-    conn = sqlite3.connect(DB_PATH)    cursor = conn.cursor()
+    conn = sqlite3.connect(DB_PATH)    
+    cursor = conn.cursor()
     cursor.execute('INSERT INTO blacklist (full_name, phone, birth_date, reason, added_by) VALUES (?, ?, ?, ?, ?)', (full_name, phone, birth_date, reason, admin_id))
     cursor.execute('DELETE FROM staff WHERE full_name = ?', (full_name,))
     conn.commit()
