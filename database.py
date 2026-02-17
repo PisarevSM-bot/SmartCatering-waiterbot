@@ -1,12 +1,18 @@
 import sqlite3
 import os
 
-# Используем относительный путь — Railway сохраняет файлы в корне при наличии volume
+# --- КРИТИЧЕСКИ ВАЖНО: создадим файл явно, если его нет ---
 DB_PATH = 'waiters.db'
+
+# Убедимся, что файл существует (Railway требует этого для persistent volume)
+if not os.path.exists(DB_PATH):
+    with open(DB_PATH, 'w') as f:
+        pass  # создаём пустой файл
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    # ... остальной код init_db() как раньше ...
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS staff (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
