@@ -1,2 +1,5 @@
-!.py
-!*.py
+.git
+.github
+__pycache__
+*.pyc
+.DS_Store
