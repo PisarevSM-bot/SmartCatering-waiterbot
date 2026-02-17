@@ -47,7 +47,8 @@ def get_db_connection():
 def add_staff(telegram_id, full_name, birth_date, phone, medbook_expiry):
     conn = get_db_connection()
     try:
-        cursor = conn.cursor()        cursor.execute('''
+        cursor = conn.cursor()        
+        cursor.execute('''
             INSERT OR REPLACE INTO staff 
             (telegram_id, full_name, birth_date, phone, medbook_status, medbook_expiry, consent_given, updated_at)
             VALUES (?, ?, ?, ?, 'действует', ?, 1, CURRENT_TIMESTAMP)
