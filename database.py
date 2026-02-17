@@ -97,7 +97,8 @@ def remove_from_blacklist(full_name):
     cursor.execute('DELETE FROM blacklist WHERE full_name LIKE ?', (f'%{full_name}%',))
     count = cursor.rowcount
     conn.commit()
-    conn.close()    return count
+    conn.close()    
+    return count
 
 def get_blacklist():
     conn = sqlite3.connect(DB_PATH)
