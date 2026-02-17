@@ -1,174 +1,188 @@
-import sqlite3
+import os
+import asyncpg
 from datetime import datetime
 
-DB_PATH = 'waiters.db'
+# Получаем URL из переменных Railway
+DB_URL = os.getenv("DATABASE_URL")
 
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS staff (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            telegram_id INTEGER UNIQUE NOT NULL,
-            full_name TEXT NOT NULL,
-            birth_date TEXT NOT NULL,
-            phone TEXT NOT NULL,
-            medbook_status TEXT CHECK(medbook_status IN ('действует', 'просрочена', 'оформляется')) DEFAULT 'действует',
-            medbook_expiry DATE NOT NULL,
-            consent_given BOOLEAN DEFAULT 0,
-            registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS blacklist (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            full_name TEXT NOT NULL,
-            phone TEXT,
-            birth_date TEXT,
-            reason TEXT NOT NULL,
-            blacklisted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            added_by INTEGER NOT NULL
-        )
-    ''')
-    
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_staff_name ON staff(full_name)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_staff_expiry ON staff(medbook_expiry)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_blacklist_name ON blacklist(full_name)')
-    
-    conn.commit()
-    conn.close()
-
-def add_staff(telegram_id, full_name, birth_date, phone, medbook_expiry):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+async def init_db():
+    """Инициализация базы данных"""
+    conn = await asyncpg.connect(DB_URL)
     try:
-        cursor.execute('''
-            INSERT OR REPLACE INTO staff 
-            (telegram_id, full_name, birth_date, phone, medbook_status, medbook_expiry, consent_given, updated_at)            VALUES (?, ?, ?, ?, 'действует', ?, 1, CURRENT_TIMESTAMP)
-        ''', (telegram_id, full_name, birth_date, phone, medbook_expiry))
-        conn.commit()
+        # Таблица активных официантов
+        await conn.execute('''
+            CREATE TABLE IF NOT EXISTS staff (
+                id SERIAL PRIMARY KEY,
+                telegram_id BIGINT UNIQUE NOT NULL,
+                full_name TEXT NOT NULL,
+                birth_date TEXT NOT NULL,
+                phone TEXT NOT NULL,
+                medbook_status TEXT CHECK(medbook_status IN ('действует', 'просрочена', 'оформляется')) DEFAULT 'действует',
+                medbook_expiry DATE NOT NULL,
+                consent_given BOOLEAN DEFAULT FALSE,
+                registered_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        ''')
+        
+        # Таблица чёрного списка
+        await conn.execute('''
+            CREATE TABLE IF NOT EXISTS blacklist (
+                id SERIAL PRIMARY KEY,
+                full_name TEXT NOT NULL,
+                phone TEXT,
+                birth_date TEXT,
+                reason TEXT NOT NULL,
+                blacklisted_at TIMESTAMP DEFAULT NOW(),
+                added_by BIGINT NOT NULL
+            )
+        ''')
+        
+        # Индексы для ускорения поиска
+        await conn.execute('CREATE INDEX IF NOT EXISTS idx_staff_name ON staff(full_name)')
+        await conn.execute('CREATE INDEX IF NOT EXISTS idx_staff_expiry ON staff(medbook_expiry)')
+        await conn.execute('CREATE INDEX IF NOT EXISTS idx_blacklist_name ON blacklist(full_name)')
+        
+        print("✅ База данных инициализирована")
+    finally:
+        await conn.close()
+
+async def add_staff(telegram_id, full_name, birth_date, phone, medbook_expiry):    """Добавление нового официанта"""
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        await conn.execute('''
+            INSERT INTO staff 
+            (telegram_id, full_name, birth_date, phone, medbook_status, medbook_expiry, consent_given, updated_at)
+            VALUES ($1, $2, $3, $4, 'действует', $5, TRUE, NOW())
+            ON CONFLICT (telegram_id) 
+            DO UPDATE SET
+                full_name = $2,
+                birth_date = $3,
+                phone = $4,
+                medbook_expiry = $5,
+                updated_at = NOW()
+        ''', telegram_id, full_name, birth_date, phone, medbook_expiry)
         return True
     except Exception as e:
         print(f"Ошибка добавления: {e}")
         return False
     finally:
-        conn.close()
+        await conn.close()
 
-def update_medbook(telegram_id, medbook_expiry):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        UPDATE staff 
-        SET medbook_expiry = ?, updated_at = CURRENT_TIMESTAMP 
-        WHERE telegram_id = ?
-    ''', (medbook_expiry, telegram_id))
-    conn.commit()
-    conn.close()
+async def update_medbook(telegram_id, medbook_expiry):
+    """Обновление срока медкнижки"""
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        await conn.execute('''
+            UPDATE staff 
+            SET medbook_expiry = $1, updated_at = NOW() 
+            WHERE telegram_id = $2
+        ''', medbook_expiry, telegram_id)
+    finally:
+        await conn.close()
 
-def get_staff_by_surname(surname):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT full_name, birth_date, phone, medbook_status, medbook_expiry 
-        FROM staff 
-        WHERE full_name LIKE ? 
-        ORDER BY full_name
-    ''', (f'%{surname}%',))
-    results = cursor.fetchall()
-    conn.close()
-    return results
+async def get_staff_by_surname(surname):
+    """Поиск официантов по фамилии"""
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        results = await conn.fetch('''
+            SELECT full_name, birth_date, phone, medbook_status, medbook_expiry 
+            FROM staff 
+            WHERE full_name ILIKE $1 
+            ORDER BY full_name
+        ''', f'%{surname}%')
+        return results
+    finally:
+        await conn.close()
 
-def get_all_staff():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT full_name, birth_date, phone, medbook_status, medbook_expiry 
-        FROM staff 
-        ORDER BY full_name
-    ''')
-    results = cursor.fetchall()
-    conn.close()
-    return results
+async def get_all_staff():
+    """Получить всех официантов"""    conn = await asyncpg.connect(DB_URL)
+    try:
+        results = await conn.fetch('''
+            SELECT full_name, birth_date, phone, medbook_status, medbook_expiry 
+            FROM staff 
+            ORDER BY full_name
+        ''')
+        return results
+    finally:
+        await conn.close()
 
-def get_expiring_medbooks(days_ahead):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''        SELECT telegram_id, full_name, medbook_expiry 
-        FROM staff 
-        WHERE medbook_status = 'действует' 
-          AND date(medbook_expiry) BETWEEN date('now') AND date('now', ? || ' days')
-          AND consent_given = 1
-        ORDER BY medbook_expiry
-    ''', (days_ahead,))
-    results = cursor.fetchall()
-    conn.close()
-    return results
+async def get_expiring_medbooks(days_ahead):
+    """Получить официантов с истекающей медкнижкой"""
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        results = await conn.fetch('''
+            SELECT telegram_id, full_name, medbook_expiry 
+            FROM staff 
+            WHERE medbook_status = 'действует' 
+              AND medbook_expiry BETWEEN CURRENT_DATE AND CURRENT_DATE + $1
+              AND consent_given = TRUE
+            ORDER BY medbook_expiry
+        ''', days_ahead)
+        return results
+    finally:
+        await conn.close()
 
-def add_to_blacklist(full_name, phone, birth_date, reason, admin_id):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    cursor.execute('SELECT phone, birth_date FROM staff WHERE full_name = ?', (full_name,))
-    existing = cursor.fetchone()
-    if existing:
-        phone = existing[0] or phone
-        birth_date = existing[1] or birth_date
-    
-    cursor.execute('''
-        INSERT INTO blacklist (full_name, phone, birth_date, reason, added_by)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (full_name, phone, birth_date, reason, admin_id))
-    
-    cursor.execute('DELETE FROM staff WHERE full_name = ?', (full_name,))
-    
-    conn.commit()
-    conn.close()
-    return True
+async def add_to_blacklist(full_name, phone, birth_date, reason, admin_id):
+    """Добавить в чёрный список"""
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        # Сначала получаем данные из активных (если есть)
+        existing = await conn.fetchrow('SELECT phone, birth_date FROM staff WHERE full_name = $1', full_name)
+        if existing:
+            phone = existing['phone'] or phone
+            birth_date = existing['birth_date'] or birth_date
+        
+        # Добавляем в ЧС
+        await conn.execute('''
+            INSERT INTO blacklist (full_name, phone, birth_date, reason, added_by)
+            VALUES ($1, $2, $3, $4, $5)
+        ''', full_name, phone, birth_date, reason, admin_id)
+        
+        # Удаляем из активных
+        await conn.execute('DELETE FROM staff WHERE full_name = $1', full_name)
+        return True
+    finally:
+        await conn.close()
 
-def remove_from_blacklist(full_name):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('DELETE FROM blacklist WHERE full_name LIKE ?', (f'%{full_name}%',))
-    count = cursor.rowcount
-    conn.commit()
-    conn.close()
-    return count
+async def remove_from_blacklist(full_name):    """Удалить из чёрного списка"""
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        result = await conn.execute('DELETE FROM blacklist WHERE full_name ILIKE $1', f'%{full_name}%')
+        count = int(result.split()[1])  # "DELETE 3" → 3
+        return count
+    finally:
+        await conn.close()
 
-def get_blacklist():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT full_name, phone, reason, blacklisted_at 
-        FROM blacklist 
-        ORDER BY blacklisted_at DESC
-    ''')
-    results = cursor.fetchall()    
-    conn.close()
-    return results
+async def get_blacklist():
+    """Получить весь чёрный список"""
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        results = await conn.fetch('''
+            SELECT full_name, phone, reason, blacklisted_at 
+            FROM blacklist 
+            ORDER BY blacklisted_at DESC
+        ''')
+        return results
+    finally:
+        await conn.close()
 
-def staff_exists(telegram_id):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('SELECT id FROM staff WHERE telegram_id = ?', (telegram_id,))
-    result = cursor.fetchone()
-    conn.close()
-    return result is not None
+async def staff_exists(telegram_id):
+    """Проверить, зарегистрирован ли официант"""
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        result = await conn.fetchval('SELECT 1 FROM staff WHERE telegram_id = $1', telegram_id)
+        return result is not None
+    finally:
+        await conn.close()
 
-def get_staff_stats():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    cursor.execute('SELECT COUNT(*) FROM staff')
-    total = cursor.fetchone()[0]
-    
-    cursor.execute('SELECT COUNT(*) FROM staff WHERE medbook_status = "просрочена"')
-    expired = cursor.fetchone()[0]
-    
-    cursor.execute('SELECT COUNT(*) FROM blacklist')
-    blacklisted = cursor.fetchone()[0]
-    
-    conn.close()
-    return total, expired, blacklisted
+async def get_staff_stats():
+    """Статистика по базе"""
+    conn = await asyncpg.connect(DB_URL)
+    try:
+        total = await conn.fetchval('SELECT COUNT(*) FROM staff')
+        expired = await conn.fetchval("SELECT COUNT(*) FROM staff WHERE medbook_status = 'просрочена'")
+        blacklisted = await conn.fetchval('SELECT COUNT(*) FROM blacklist')
+        return total, expired, blacklisted
+    finally:
+        await conn.close()
