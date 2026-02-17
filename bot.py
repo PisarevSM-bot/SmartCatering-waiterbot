@@ -16,7 +16,7 @@ import dotenv
 
 # Импорт из database.py (должен быть в том же каталоге)
 from database import init_db, add_staff, update_medbook, get_staff_by_surname, get_all_staff, get_expiring_medbooks, add_to_blacklist, get_blacklist, remove_from_blacklist, staff_exists, get_staff_stats
-
+from database import DB_PATH
 # Убедимся, что /app существует (для persistent volume Railway)
 os.makedirs('/app', exist_ok=True)
 
