@@ -401,7 +401,6 @@ async def on_startup():
     except Exception as e:
         logger.error(f"❌ Ошибка инициализации БД: {e}")
         sys.exit(1) 
-    init_db()
     logger.info("✅ Бот запущен. Напоминания временно отключены.")
 async def main():
     dp.include_router(router)
