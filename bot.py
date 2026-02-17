@@ -3,6 +3,7 @@ import os
 import sys
 from datetime import datetime, timedelta
 import logging
+import sqlite3
 
 from aiogram import Bot, Dispatcher, Router, F
 from aiogram.types import Message, CallbackQuery
@@ -13,8 +14,11 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 import dotenv
 
-# Импорт всех функций одной строкой (без риска SyntaxError)
+# Импорт из database.py (должен быть в том же каталоге)
 from database import init_db, add_staff, update_medbook, get_staff_by_surname, get_all_staff, get_expiring_medbooks, add_to_blacklist, get_blacklist, remove_from_blacklist, staff_exists, get_staff_stats
+
+# Убедимся, что /app существует (для persistent volume Railway)
+os.makedirs('/app', exist_ok=True)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,7 +30,7 @@ REMINDER_DAYS = [int(x.strip()) for x in os.getenv('REMINDER_DAYS', '14,3').spli
 
 if not BOT_TOKEN:
     logger.error("❌ Не указан BOT_TOKEN!")
-    exit(1)
+    sys.exit(1)
 
 if not ADMIN_IDS:
     logger.warning("⚠️ Не указаны ADMIN_IDS")
@@ -34,7 +38,6 @@ if not ADMIN_IDS:
 bot = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
-scheduler = AsyncIOScheduler(timezone='Europe/Moscow')
 router = Router()
 
 class Registration(StatesGroup):
@@ -44,8 +47,8 @@ class Registration(StatesGroup):
     phone = State()
     medbook_expiry = State()
 
-class UpdateMedbook(StatesGroup):
-    medbook_expiry = State()
+class UpdateMedbook(StatesGroup):    medbook_expiry = State()
+
 class BlacklistAdd(StatesGroup):
     full_name = State()
     phone = State()
@@ -93,8 +96,7 @@ def create_admin_kb():
         [KeyboardButton(text="📊 Статистика")],
         [KeyboardButton(text="📤 Выгрузить всех")],
         [KeyboardButton(text="🚫 Чёрный список")],
-        [KeyboardButton(text="⬅️ Назад")]
-    ]    
+        [KeyboardButton(text="⬅️ Назад")]    ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
 @router.message(Command("start"))
@@ -143,8 +145,7 @@ async def process_birth_date(message: Message, state: FSMContext):
         return
     birth_date = datetime.strptime(message.text.strip(), '%d.%m.%Y')
     age = (datetime.now() - birth_date).days / 365.25
-    if age < 16:
-        await message.answer("Возраст должен быть не менее 16 лет:")        
+    if age < 16:        await message.answer("Возраст должен быть не менее 16 лет:")        
         return
     await state.update_data(birth_date=message.text.strip())
     await state.set_state(Registration.phone)
@@ -193,12 +194,11 @@ async def process_medbook(message: Message, state: FSMContext):
         await message.answer("❌ Ошибка сохранения данных.", reply_markup=create_main_kb())
     await state.clear()
 
-@router.message(F.text == "👤 Мои данные")
-async def my_data(message: Message):    
+@router.message(F.text.contains("Мои данные"))async def my_data(message: Message):    
     if not staff_exists(message.from_user.id):
         await message.answer("❌ Вы не зарегистрированы. Нажмите /start")
         return
-    conn = sqlite3.connect('waiters.db')
+    conn = sqlite3.connect('/app/waiters.db')
     cursor = conn.cursor()
     cursor.execute('SELECT full_name, birth_date, phone, medbook_status, medbook_expiry FROM staff WHERE telegram_id = ?', (message.from_user.id,))
     data = cursor.fetchone()
@@ -217,7 +217,7 @@ async def my_data(message: Message):
         "Для обновления — нажмите «🔄 Обновить медкнижку»"
     )
 
-@router.message(F.text == "🔄 Обновить медкнижку")
+@router.message(F.text.contains("Обновить медкнижку"))
 async def update_medbook_start(message: Message, state: FSMContext):
     if not staff_exists(message.from_user.id):
         await message.answer("❌ Вы не зарегистрированы. Нажмите /start")
@@ -235,16 +235,15 @@ async def update_medbook_process(message: Message, state: FSMContext):
     await message.answer(f"✅ Срок обновлён до {message.text.strip()}", reply_markup=create_main_kb())
     await state.clear()
 
-@router.message(F.text == "👑 Админ-панель")
+@router.message(F.text.contains("Админ-панель"))
 async def admin_panel(message: Message):
     if not is_admin(message.from_user.id):
         await message.answer("❌ У вас нет прав администратора.")
         return
     await message.answer("👑 Админ-панель", reply_markup=create_admin_kb())
 
-@router.message(F.text == "🔍 Поиск по фамилии")
-async def search_start(message: Message):
-    if not is_admin(message.from_user.id):        
+@router.message(F.text.contains("Поиск по фамилии"))
+async def search_start(message: Message):    if not is_admin(message.from_user.id):        
         return
     await message.answer("🔍 Введите фамилию:")
 
@@ -263,14 +262,14 @@ async def search_process(message: Message):
         text += f"{i}. {name}\n   ДР: {format_date_for_user(birth)}\n   Тел: {phone}\n   Медкнижка: {status_emoji} до {format_date_for_user(expiry)}\n\n"
     await message.answer(text)
 
-@router.message(F.text == "📊 Статистика")
+@router.message(F.text.contains("Статистика"))
 async def show_stats(message: Message):
     if not is_admin(message.from_user.id):
         return
     total, expired, blacklisted = get_staff_stats()
     await message.answer(f"📊 Статистика:\n\n👥 Активных: {total}\n⚠️ Просрочена: {expired}\n🚫 В ЧС: {blacklisted}")
 
-@router.message(F.text == "📤 Выгрузить всех")
+@router.message(F.text.contains("Выгрузить всех"))
 async def export_all(message: Message):
     if not is_admin(message.from_user.id):
         return
@@ -288,13 +287,12 @@ async def export_all(message: Message):
     else:
         await message.answer(text)
 
-@router.message(F.text == "🚫 Чёрный список")
+@router.message(F.text.contains("Чёрный список"))
 async def blacklist_menu(message: Message):
     if not is_admin(message.from_user.id):
         return
     blacklist = get_blacklist()
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="➕ Добавить", callback_data="blacklist_add")],        
+    kb = InlineKeyboardMarkup(inline_keyboard=[        [InlineKeyboardButton(text="➕ Добавить", callback_data="blacklist_add")],
         [InlineKeyboardButton(text="🗑 Удалить запись", callback_data="blacklist_remove")]
     ])
     if blacklist:
@@ -343,8 +341,7 @@ async def blacklist_add_birth(message: Message, state: FSMContext):
     if text in ["Отмена", "отмена", "-"]:
         await state.clear()
         await message.answer("Действие отменено", reply_markup=create_admin_kb())
-        return
-    birth_date = None if text == '-' else text    
+        return    birth_date = None if text == '-' else text    
     await state.update_data(birth_date=birth_date)
     await state.set_state(BlacklistAdd.reason)
     await message.answer("Причина добавления в ЧС:")
@@ -380,40 +377,19 @@ async def blacklist_remove_process(message: Message):
     else:
         await message.answer("❌ Записи не найдены", reply_markup=create_admin_kb())
 
-@router.message(F.text == "⬅️ Назад")
+@router.message(F.text.contains("Назад"))
 async def back_to_main(message: Message):
     kb = create_main_kb(is_admin=is_admin(message.from_user.id))
     await message.answer("🔙 Возврат в главное меню", reply_markup=kb)
 
-@router.message(F.text == "ℹ️ Помощь")
+@router.message(F.text.contains("Помощь"))
 async def help_cmd(message: Message):
     text = "ℹ️ Справка:\n\n👤 Для официантов:\n— /start для регистрации\n— Автоматические напоминания\n\n👑 Для админов:\n— Поиск, выгрузка, ЧС\n\n🔒 Данные защищены."
     await message.answer(text)
 
-async def send_medbook_reminders():
-    logger.info("Запуск проверки напоминаний")
-    for days in REMINDER_DAYS:
-        expiring = get_expiring_medbooks(days)
-        for tg_id, name, expiry in expiring:            
-            days_left = (datetime.strptime(expiry, '%Y-%m-%d').date() - datetime.now().date()).days
-            try:
-                await bot.send_message(tg_id, f"⚠️ Напоминание!\n{name}, срок действия медкнижки истекает {format_date_for_user(expiry)} (осталось {days_left} дн.). Оформите продление!")
-                logger.info(f"Напоминание отправлено {name} (ID: {tg_id}), дней до окончания: {days_left}")
-            except Exception as e:
-                logger.warning(f"Не удалось отправить напоминание {tg_id}: {e}")
-            for admin_id in ADMIN_IDS:
-                try:
-                    await bot.send_message(admin_id, f"🔔 Напоминание: у {name} истекает медкнижка {format_date_for_user(expiry)} (через {days_left} дн.)")
-                except Exception as e:
-                    logger.warning(f"Не удалось отправить админу {admin_id}: {e}")
-    logger.info("Проверка завершена")
-
 async def on_startup():
     init_db()
-    scheduler.add_job(send_medbook_reminders, trigger=CronTrigger(hour=10, minute=0, timezone='Europe/Moscow'), id='medbook_reminders', replace_existing=True)
-    scheduler.start()
-    logger.info("✅ Бот запущен. Напоминания в 10:00.")
-
+    logger.info("✅ Бот запущен. Напоминания временно отключены.")
 async def main():
     dp.include_router(router)
     await on_startup()
@@ -433,6 +409,4 @@ if __name__ == "__main__":
     except Exception as e:
         logger.exception(f"❌ Ошибка: {e}")
     finally:
-        if scheduler.running:
-            scheduler.shutdown()
         logger.info("👋 Бот завершил работу")
