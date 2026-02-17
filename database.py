@@ -1,20 +1,24 @@
 import sqlite3
 import os
 
-# Используем абсолютный путь — Railway сохраняет /app при наличии volume
+# Используем /app/waiters.db — Railway гарантирует, что /app доступен при наличии volume
 DB_PATH = '/app/waiters.db'
 
 def init_db():
-    # Создаём директорию /app (если volume ещё не смонтирован)
+    # Создаём директорию и файл ПЕРЕД подключением
     os.makedirs('/app', exist_ok=True)
-    
-    # Создаём файл, если его нет
     if not os.path.exists(DB_PATH):
-        with open(DB_PATH, 'w') as f:
-            f.write('')
-    
+        try:
+            with open(DB_PATH, 'w') as f:
+                f.write('')
+            print(f"✅ Создан файл: {DB_PATH}")
+        except Exception as e:
+            print(f"⚠️ Не удалось создать файл: {e}")
+            raise
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    # ... остальной код init_db() без изменений ...
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS staff (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
