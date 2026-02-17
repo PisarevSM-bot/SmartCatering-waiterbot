@@ -6,8 +6,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY main/. .   # копируем всё из папки main в /app
-
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .  # ← КОПИРУЕМ ВСЁ ИЗ КОРНЯ РЕПОЗИТОРИЯ
 
 CMD ["python", "bot.py"]
