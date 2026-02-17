@@ -1,9 +1,14 @@
 import sqlite3
 import os
 
-DB_PATH = 'waiters.db'
+# Используем абсолютный путь — Railway сохраняет /app при наличии volume
+DB_PATH = '/app/waiters.db'
 
 def init_db():
+    # Создаём директорию /app (если volume ещё не смонтирован)
+    os.makedirs('/app', exist_ok=True)
+    
+    # Создаём файл, если его нет
     if not os.path.exists(DB_PATH):
         with open(DB_PATH, 'w') as f:
             f.write('')
